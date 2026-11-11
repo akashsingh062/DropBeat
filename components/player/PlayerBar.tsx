@@ -14,7 +14,8 @@ import {
   VolumeX,
   Mic2,
   Activity,
-  ListMusic
+  ListMusic,
+  Zap
 } from "lucide-react";
 import Image from "next/image";
 
@@ -29,8 +30,11 @@ export function PlayerBar() {
   const repeatMode = useAudioStore((s) => s.repeatMode);
   const activeView = useAudioStore((s) => s.activeView);
   const ambientRgb = useAudioStore((s) => s.ambientRgb);
+  const isHookMode = useAudioStore((s) => s.isHookMode);
 
   const togglePlay = useAudioStore((s) => s.togglePlay);
+  const toggleHookMode = useAudioStore((s) => s.toggleHookMode);
+  const jumpToDrop = useAudioStore((s) => s.jumpToDrop);
   const nextTrack = useAudioStore((s) => s.nextTrack);
   const prevTrack = useAudioStore((s) => s.prevTrack);
   const seekTo = useAudioStore((s) => s.seekTo);
@@ -42,6 +46,7 @@ export function PlayerBar() {
 
   const [isHoveringSeek, setIsHoveringSeek] = useState(false);
   const [hoverSeekPos, setHoverSeekPos] = useState<number | null>(null);
+  const [isHoveringVolume, setIsHoveringVolume] = useState(false);
 
   const isPlaying = playbackStatus === "playing";
   const isBuffering = playbackStatus === "buffering";
@@ -84,7 +89,7 @@ export function PlayerBar() {
         <div className="flex items-center gap-3 w-full md:w-1/4 shrink-0">
           <div className="relative w-12 h-12 rounded-md overflow-hidden bg-neutral-900 border border-neutral-800 shrink-0">
             <Image
-              src={currentTrack.coverUrl}
+              src={currentTrack.thumbnailUrl || currentTrack.coverUrl}
               alt={currentTrack.title}
               fill
               sizes="48px"
@@ -105,7 +110,7 @@ export function PlayerBar() {
         {/* Center: Controls & Scrubber */}
         <div className="flex flex-col items-center gap-2 w-full md:w-2/4 max-w-2xl">
           {/* Action buttons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             {/* Shuffle */}
             <button
               type="button"
@@ -175,6 +180,23 @@ export function PlayerBar() {
               ) : (
                 <Repeat className="w-4 h-4" />
               )}
+            </button>
+
+            {/* Hook / Drop Mode Button */}
+            <button
+              type="button"
+              onClick={toggleHookMode}
+              title="Click to toggle Hook Mode; double-click to jump to Drop immediately"
+              aria-label={isHookMode ? "Disable Drop Mode" : "Enable Drop Mode (auto-jumps to chorus/peak)"}
+              aria-pressed={isHookMode}
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400 active:scale-95 ${
+                isHookMode
+                  ? "bg-amber-400 text-neutral-950 border border-amber-300 shadow-md"
+                  : "text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10 border border-amber-500/30"
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>Drop</span>
             </button>
           </div>
 
@@ -268,8 +290,20 @@ export function PlayerBar() {
             </button>
           </div>
 
-          {/* Volume slider */}
-          <div className="flex items-center gap-2">
+          {/* Volume slider with floating percentage tooltip */}
+          <div
+            className="relative flex items-center gap-2"
+            onMouseEnter={() => setIsHoveringVolume(true)}
+            onMouseLeave={() => setIsHoveringVolume(false)}
+          >
+            {isHoveringVolume && (
+              <div
+                className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 text-[10px] font-mono bg-neutral-900 border border-neutral-700 text-neutral-200 rounded pointer-events-none shadow-md z-50 select-none whitespace-nowrap"
+              >
+                {isMuted ? "0%" : `${Math.round(volume)}%`}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={toggleMute}

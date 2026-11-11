@@ -5,19 +5,21 @@ import { INITIAL_TRACKS } from "@/data/tracks";
 import { Header } from "@/components/navigation/Header";
 import { NowPlayingHero } from "@/components/hero/NowPlayingHero";
 import { TrackGrid } from "@/components/library/TrackGrid";
+import { YouTubeSearchStage } from "@/components/search/YouTubeSearchStage";
 import { SyncedLyrics } from "@/components/lyrics/SyncedLyrics";
 import { AudioCanvas } from "@/components/visualizer/AudioCanvas";
 import { QueueDrawer } from "@/components/queue/QueueDrawer";
 import { PlayerBar } from "@/components/player/PlayerBar";
-import { Disc, Activity } from "lucide-react";
+import { Disc, Activity, Search } from "lucide-react";
 
 export default function DropBeatPage() {
   const activeView = useAudioStore((s) => s.activeView);
+  const setActiveView = useAudioStore((s) => s.setActiveView);
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const ambientRgb = useAudioStore((s) => s.ambientRgb);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-neutral-800 selection:text-neutral-100">
+    <div className="relative min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-neutral-800 selection:text-neutral-100 overflow-x-clip">
       {/* Background ambient lighting */}
       <div
         className="fixed inset-0 pointer-events-none opacity-25 blur-[120px] -z-10 transition-colors duration-700"
@@ -26,44 +28,87 @@ export default function DropBeatPage() {
         }}
       />
 
-      {/* Persistent Navigation Header */}
+      {/* Persistent Navigation Header with Global Search */}
       <Header />
 
-      {/* Main Workspace Stage */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 pt-6 pb-32">
-        {activeView === "library" && (
-          <div className="space-y-10">
-            {/* Spotlight Hero Stage */}
-            <NowPlayingHero />
+      {/* Main Workspace Stage - Views kept persistently in DOM to prevent re-mounting flash */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 pt-5 pb-32">
+        {/* Catalog / Library View */}
+        <div className={activeView === "library" ? "block space-y-8" : "hidden"}>
+          {/* Top Quick-Search Callout Strip */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-neutral-900/60 border border-neutral-800 backdrop-blur-md">
+            <div
+              className="flex items-center gap-2.5 flex-1 cursor-pointer"
+              onClick={() => setActiveView("search")}
+            >
+              <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+              <span className="text-xs sm:text-sm text-neutral-300 select-none">
+                Search any song, artist, or paste a link from YouTube…
+              </span>
+            </div>
 
-            {/* Catalog Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
-                <div className="flex items-center gap-2">
-                  <Disc className="w-4 h-4 text-neutral-400" />
-                  <h2 className="text-base font-semibold text-neutral-100">
-                    Curated Soundscapes
-                  </h2>
-                </div>
-                <span className="text-xs text-neutral-400 font-sans">
+            <div className="flex items-center gap-2 shrink-0">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded border border-neutral-700 bg-neutral-950 text-[10px] font-mono text-neutral-400">
+                /
+              </kbd>
+              <button
+                type="button"
+                onClick={() => setActiveView("search")}
+                className="px-4 py-2 rounded-lg bg-neutral-100 text-neutral-950 font-medium text-xs hover:bg-neutral-200 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
+              >
+                Search Music
+              </button>
+            </div>
+          </div>
+
+          {/* Spotlight Hero Stage */}
+          <NowPlayingHero />
+
+          {/* Catalog Section */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Disc className="w-4 h-4 text-neutral-400" />
+                <h2 className="text-base font-semibold text-neutral-100">
+                  Curated Soundscapes
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveView("search")}
+                  className="text-xs text-neutral-300 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800 hover:bg-neutral-800 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
+                >
+                  <Search className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>Search YouTube</span>
+                </button>
+                <span className="text-xs text-neutral-400 font-sans hidden sm:inline">
                   {INITIAL_TRACKS.length} master recordings
                 </span>
               </div>
-
-              <TrackGrid tracks={INITIAL_TRACKS} />
             </div>
-          </div>
-        )}
 
-        {activeView === "lyrics" && (
+            <TrackGrid tracks={INITIAL_TRACKS} />
+          </div>
+        </div>
+
+        {/* Dedicated YouTube Search Stage */}
+        <div className={activeView === "search" ? "block" : "hidden"}>
+          <YouTubeSearchStage />
+        </div>
+
+        {/* Synced Lyrics Stage */}
+        <div className={activeView === "lyrics" ? "block" : "hidden"}>
           <div className="w-full max-w-3xl mx-auto py-4">
             <div className="p-6 sm:p-8 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 backdrop-blur-xl">
               <SyncedLyrics />
             </div>
           </div>
-        )}
+        </div>
 
-        {activeView === "visualizer" && (
+        {/* Real-time Visualizer Stage */}
+        <div className={activeView === "visualizer" ? "block" : "hidden"}>
           <div className="w-full max-w-4xl mx-auto py-4 space-y-6">
             <div className="p-6 sm:p-8 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 backdrop-blur-xl flex flex-col gap-6">
               <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
@@ -110,15 +155,16 @@ export default function DropBeatPage() {
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeView === "queue" && (
+        {/* Live Queue Drawer Stage */}
+        <div className={activeView === "queue" ? "block" : "hidden"}>
           <div className="w-full max-w-3xl mx-auto py-4">
             <div className="p-6 sm:p-8 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 backdrop-blur-xl">
               <QueueDrawer />
             </div>
           </div>
-        )}
+        </div>
       </main>
 
       {/* Hallmark Persistent Player Bar */}

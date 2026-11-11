@@ -20,14 +20,21 @@ interface AudioStoreState {
   ambientGlow: string;
   lyrics: SyncedLyricLine[];
   seekTarget: number | null;
+  isHookMode: boolean;
+  hookDuration: number; // in seconds (default: 25)
+  globalSearchQuery: string;
 
   // Actions
   playTrack: (track: Track) => void;
+  playTrackAtDrop: (track: Track) => void;
+  jumpToDrop: () => void;
+  toggleHookMode: () => void;
   togglePlay: () => void;
   setPlaybackStatus: (status: PlaybackStatus) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   nextTrack: () => void;
+  nextTrackDrop: () => void;
   prevTrack: () => void;
   seekTo: (seconds: number) => void;
   clearSeekTarget: () => void;
@@ -41,6 +48,7 @@ interface AudioStoreState {
   setActiveView: (view: AppView) => void;
   setAmbientData: (rgb: string, glow: string) => void;
   setLyrics: (lyrics: SyncedLyricLine[]) => void;
+  setGlobalSearchQuery: (query: string) => void;
 }
 
 export const useAudioStore = create<AudioStoreState>()(
@@ -61,6 +69,9 @@ export const useAudioStore = create<AudioStoreState>()(
       ambientGlow: "rgba(30, 41, 59, 0.25)",
       lyrics: INITIAL_TRACKS[0]?.syncedLyrics || [],
       seekTarget: null,
+      isHookMode: false,
+      hookDuration: 25,
+      globalSearchQuery: "",
 
       playTrack: (track) => {
         const { queue } = get();
@@ -84,6 +95,30 @@ export const useAudioStore = create<AudioStoreState>()(
             duration: track.duration,
             lyrics: track.syncedLyrics || []
           });
+        }
+      },
+
+      playTrackAtDrop: (track) => {
+        const { playTrack, seekTo } = get();
+        playTrack(track);
+        const dropPoint = track.peakTimestamp || Math.floor((track.duration || 200) * 0.35);
+        seekTo(dropPoint);
+      },
+
+      jumpToDrop: () => {
+        const { currentTrack, seekTo } = get();
+        if (!currentTrack) return;
+        const dropPoint = currentTrack.peakTimestamp || Math.floor((currentTrack.duration || 200) * 0.35);
+        seekTo(dropPoint);
+        set({ playbackStatus: "playing" });
+      },
+
+      toggleHookMode: () => {
+        const { isHookMode, jumpToDrop, playbackStatus } = get();
+        const nextMode = !isHookMode;
+        set({ isHookMode: nextMode });
+        if (nextMode && playbackStatus === "playing") {
+          jumpToDrop();
         }
       },
 
@@ -140,11 +175,41 @@ export const useAudioStore = create<AudioStoreState>()(
         }
       },
 
+      nextTrackDrop: () => {
+        const { queue, queueIndex, isShuffle, repeatMode } = get();
+        if (queue.length === 0) return;
+
+        let nextIdx = queueIndex + 1;
+        if (isShuffle) {
+          nextIdx = Math.floor(Math.random() * queue.length);
+        } else if (nextIdx >= queue.length) {
+          if (repeatMode === "all") {
+            nextIdx = 0;
+          } else {
+            set({ playbackStatus: "ended" });
+            return;
+          }
+        }
+
+        const nextT = queue[nextIdx];
+        if (nextT) {
+          const dropTime = nextT.peakTimestamp || Math.floor((nextT.duration || 200) * 0.35);
+          set({
+            currentTrack: nextT,
+            queueIndex: nextIdx,
+            playbackStatus: "playing",
+            currentTime: dropTime,
+            seekTarget: dropTime,
+            duration: nextT.duration,
+            lyrics: nextT.syncedLyrics || []
+          });
+        }
+      },
+
       prevTrack: () => {
         const { queue, queueIndex, currentTime } = get();
         if (queue.length === 0) return;
 
-        // If played more than 3 seconds, restart current track
         if (currentTime > 3) {
           set({ currentTime: 0, seekTarget: 0 });
           return;
@@ -221,7 +286,9 @@ export const useAudioStore = create<AudioStoreState>()(
 
       setAmbientData: (ambientRgb, ambientGlow) => set({ ambientRgb, ambientGlow }),
 
-      setLyrics: (lyrics) => set({ lyrics })
+      setLyrics: (lyrics) => set({ lyrics }),
+
+      setGlobalSearchQuery: (globalSearchQuery) => set({ globalSearchQuery })
     }),
     {
       name: "dropbeat-audio-store",
@@ -231,9 +298,9 @@ export const useAudioStore = create<AudioStoreState>()(
         isMuted: state.isMuted,
         isShuffle: state.isShuffle,
         repeatMode: state.repeatMode,
-        activeView: state.activeView
+        activeView: state.activeView,
+        isHookMode: state.isHookMode
       })
     }
   )
 );
-

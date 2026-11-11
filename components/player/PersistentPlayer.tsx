@@ -12,11 +12,14 @@ export function PersistentPlayer() {
   const volume = useAudioStore((s) => s.volume);
   const isMuted = useAudioStore((s) => s.isMuted);
   const seekTarget = useAudioStore((s) => s.seekTarget);
+  const isHookMode = useAudioStore((s) => s.isHookMode);
+  const hookDuration = useAudioStore((s) => s.hookDuration);
 
   const setPlaybackStatus = useAudioStore((s) => s.setPlaybackStatus);
   const setCurrentTime = useAudioStore((s) => s.setCurrentTime);
   const setDuration = useAudioStore((s) => s.setDuration);
   const nextTrack = useAudioStore((s) => s.nextTrack);
+  const nextTrackDrop = useAudioStore((s) => s.nextTrackDrop);
   const clearSeekTarget = useAudioStore((s) => s.clearSeekTarget);
   const setAmbientData = useAudioStore((s) => s.setAmbientData);
   const setLyrics = useAudioStore((s) => s.setLyrics);
@@ -24,6 +27,12 @@ export function PersistentPlayer() {
   const playerRef = useRef<YouTubePlayer | null>(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTriggeredHookSkip = useRef(false);
+
+  // Reset hook skip guard when current track changes
+  useEffect(() => {
+    hasTriggeredHookSkip.current = false;
+  }, [currentTrack]);
 
   // Sync ambient color and lyrics whenever track changes
   useEffect(() => {
@@ -32,7 +41,7 @@ export function PersistentPlayer() {
     let isMounted = true;
 
     // 1. Extract dominant color
-    extractDominantColor(currentTrack.coverUrl).then((color) => {
+    extractDominantColor(currentTrack.coverUrl || currentTrack.thumbnailUrl || "").then((color) => {
       if (isMounted) {
         applyAmbientTheme(color);
         setAmbientData(color.rgb, color.glow);
@@ -114,6 +123,15 @@ export function PersistentPlayer() {
         const dur = await player.getDuration();
         if (typeof time === "number" && !isNaN(time)) {
           setCurrentTime(time);
+
+          // Hook / Drop Mode auto-advance check
+          if (isHookMode && currentTrack) {
+            const dropPoint = currentTrack.peakTimestamp || Math.floor((currentTrack.duration || 200) * 0.35);
+            if (time >= dropPoint + hookDuration && !hasTriggeredHookSkip.current) {
+              hasTriggeredHookSkip.current = true;
+              nextTrackDrop();
+            }
+          }
         }
         if (typeof dur === "number" && !isNaN(dur) && dur > 0) {
           setDuration(dur);
@@ -122,7 +140,7 @@ export function PersistentPlayer() {
         // player might not be ready
       }
     }, 250);
-  }, [setCurrentTime, setDuration]);
+  }, [setCurrentTime, setDuration, isHookMode, currentTrack, hookDuration, nextTrackDrop]);
 
   const stopTimeTracking = useCallback(() => {
     if (intervalRef.current) {
@@ -165,7 +183,11 @@ export function PersistentPlayer() {
     } else if (state === 3) {
       setPlaybackStatus("buffering");
     } else if (state === 0) {
-      nextTrack();
+      if (isHookMode) {
+        nextTrackDrop();
+      } else {
+        nextTrack();
+      }
     }
   };
 
@@ -203,4 +225,3 @@ export function PersistentPlayer() {
     </div>
   );
 }
-

@@ -1,13 +1,14 @@
 "use client";
 
 import { useAudioStore } from "@/lib/store";
-import { Play, Pause, ListPlus, Sparkles } from "lucide-react";
+import { Play, Pause, ListPlus, Sparkles, Zap } from "lucide-react";
 import Image from "next/image";
 
 export function NowPlayingHero() {
   const currentTrack = useAudioStore((s) => s.currentTrack);
   const playbackStatus = useAudioStore((s) => s.playbackStatus);
   const togglePlay = useAudioStore((s) => s.togglePlay);
+  const jumpToDrop = useAudioStore((s) => s.jumpToDrop);
   const addToQueue = useAudioStore((s) => s.addToQueue);
   const setActiveView = useAudioStore((s) => s.setActiveView);
   const ambientRgb = useAudioStore((s) => s.ambientRgb);
@@ -114,11 +115,11 @@ export function NowPlayingHero() {
 
             <button
               type="button"
-              onClick={() => setActiveView("lyrics")}
-              className="px-4 py-2.5 rounded-full bg-neutral-800/80 text-neutral-200 hover:text-neutral-100 hover:bg-neutral-800 border border-neutral-700/60 font-medium text-sm flex items-center gap-2 active:scale-95 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
+              onClick={jumpToDrop}
+              className="px-4 py-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 font-medium text-sm flex items-center gap-1.5 active:scale-95 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
             >
-              <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Read synced lyrics</span>
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>Jump to Drop</span>
             </button>
 
             <button

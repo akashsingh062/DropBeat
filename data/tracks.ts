@@ -8,10 +8,12 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Hurry Up, We're Dreaming",
     duration: 244,
     coverUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80",
     youtubeId: "dX3k_QDnzHE",
     genre: "Synthwave / Electronic",
     year: 2011,
     bpm: 105,
+    peakTimestamp: 66, // The iconic chorus and synth surge
     syncedLyrics: [
       { time: 10, text: "Waiting in a car" },
       { time: 14, text: "Waiting for a ride in the dark" },
@@ -39,13 +41,16 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Odyssey",
     duration: 212,
     coverUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=80",
     youtubeId: "8GW6sLrK40k",
     genre: "Chillwave / Ambient",
     year: 2014,
     bpm: 85,
+    peakTimestamp: 45, // Main chillwave melodic drop
     syncedLyrics: [
       { time: 12, text: "[Warm analog synths fading in]" },
       { time: 30, text: "[Tape flutter and sub bass pulse]" },
+      { time: 45, text: "[The melodic synth drop peaks]" },
       { time: 60, text: "[Drifting through nocturnal memories]" },
       { time: 90, text: "[Distant reverb and stereo delay]" },
       { time: 120, text: "[Resonance peaking with filtered sweeps]" },
@@ -59,10 +64,12 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Starboy",
     duration: 230,
     coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
     youtubeId: "34Na4j8AVgA",
     genre: "R&B / Electro-Pop",
     year: 2016,
     bpm: 93,
+    peakTimestamp: 40, // Starboy chorus drop
     syncedLyrics: [
       { time: 7, text: "I'm tryna put you in the worst mood, ah" },
       { time: 11, text: "P1 cleaner than your church shoes, ah" },
@@ -85,10 +92,12 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Time",
     duration: 259,
     coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80",
     youtubeId: "waAlgFq9Xq8",
     genre: "Darkwave / Synth",
     year: 2014,
     bpm: 112,
+    peakTimestamp: 75, // "As the hours pass, I will let you know"
     syncedLyrics: [
       { time: 15, text: "I see you, you see me" },
       { time: 22, text: "How pleasant, this feeling" },
@@ -111,10 +120,12 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Sunshower",
     duration: 215,
     coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80",
     youtubeId: "vBq7_2F73p0",
     genre: "City Pop / Jazz Fusion",
     year: 1977,
     bpm: 96,
+    peakTimestamp: 46, // Japanese city pop chorus
     syncedLyrics: [
       { time: 10, text: "[Funk bassline and crisp Rhodes piano chords]" },
       { time: 24, text: "Tokai no yoru wa nagarete" },
@@ -131,10 +142,12 @@ export const INITIAL_TRACKS: Track[] = [
     album: "Random Access Memories",
     duration: 248,
     coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80",
+    thumbnailUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80",
     youtubeId: "5NV6Rdv1a3I",
     genre: "Nu-Disco / Funk",
     year: 2013,
     bpm: 116,
+    peakTimestamp: 45, // "She's up all night 'til the sun"
     syncedLyrics: [
       { time: 14, text: "Like the legend of the phoenix" },
       { time: 18, text: "All ends with beginnings" },
@@ -149,4 +162,3 @@ export const INITIAL_TRACKS: Track[] = [
     ]
   }
 ];
-
