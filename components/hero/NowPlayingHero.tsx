@@ -90,7 +90,7 @@ export function NowPlayingHero() {
           </h1>
 
           <p className="text-base sm:text-lg text-neutral-300 font-normal mb-6">
-            {currentTrack.artist} ({currentTrack.album})
+            {currentTrack.artist} {currentTrack.album ? `(${currentTrack.album})` : `· ${currentTrack.genre}`}
           </p>
 
           {/* Action Row */}

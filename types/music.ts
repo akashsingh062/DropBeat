@@ -14,6 +14,17 @@ export interface Track {
   syncedLyrics?: Array<{ time: number; text: string }>;
 }
 
+export interface Playlist {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  coverUrl: string;
+  category: string;
+  curator: string;
+  tracks: Track[];
+}
+
 export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'buffering' | 'ended';
 
 export type RepeatMode = 'off' | 'all' | 'one';

@@ -4,13 +4,15 @@ import { useAudioStore } from "@/lib/store";
 import { INITIAL_TRACKS } from "@/data/tracks";
 import { Header } from "@/components/navigation/Header";
 import { NowPlayingHero } from "@/components/hero/NowPlayingHero";
+import { PlaylistSelector } from "@/components/library/PlaylistSelector";
 import { TrackGrid } from "@/components/library/TrackGrid";
 import { YouTubeSearchStage } from "@/components/search/YouTubeSearchStage";
 import { SyncedLyrics } from "@/components/lyrics/SyncedLyrics";
 import { AudioCanvas } from "@/components/visualizer/AudioCanvas";
 import { QueueDrawer } from "@/components/queue/QueueDrawer";
 import { PlayerBar } from "@/components/player/PlayerBar";
-import { Disc, Activity, Search } from "lucide-react";
+import { AutoplayNotification } from "@/components/player/AutoplayNotification";
+import { Activity, Search } from "lucide-react";
 
 export default function DropBeatPage() {
   const activeView = useAudioStore((s) => s.activeView);
@@ -64,33 +66,11 @@ export default function DropBeatPage() {
           {/* Spotlight Hero Stage */}
           <NowPlayingHero />
 
-          {/* Catalog Section */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-3">
-              <div className="flex items-center gap-2">
-                <Disc className="w-4 h-4 text-neutral-400" />
-                <h2 className="text-base font-semibold text-neutral-100">
-                  Curated Soundscapes
-                </h2>
-              </div>
+          {/* Curated YouTube Playlists Section */}
+          <PlaylistSelector />
 
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveView("search")}
-                  className="text-xs text-neutral-300 hover:text-neutral-100 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800 hover:bg-neutral-800 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400"
-                >
-                  <Search className="w-3.5 h-3.5 text-neutral-400" />
-                  <span>Search YouTube</span>
-                </button>
-                <span className="text-xs text-neutral-400 font-sans hidden sm:inline">
-                  {INITIAL_TRACKS.length} master recordings
-                </span>
-              </div>
-            </div>
-
-            <TrackGrid tracks={INITIAL_TRACKS} />
-          </div>
+          {/* Active Playlist Tracks & YouTube Search Grid */}
+          <TrackGrid tracks={INITIAL_TRACKS} />
         </div>
 
         {/* Dedicated YouTube Search Stage */}
@@ -166,6 +146,9 @@ export default function DropBeatPage() {
           </div>
         </div>
       </main>
+
+      {/* Floating Upcoming Autoplay Recommendation Card */}
+      <AutoplayNotification />
 
       {/* Hallmark Persistent Player Bar */}
       <PlayerBar />

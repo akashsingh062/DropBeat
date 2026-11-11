@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Track, PlaybackStatus, RepeatMode, AppView } from "@/types/music";
-import { INITIAL_TRACKS } from "@/data/tracks";
+import { Track, Playlist, PlaybackStatus, RepeatMode, AppView } from "@/types/music";
+import { YOUTUBE_PLAYLISTS } from "@/data/playlists";
 import { SyncedLyricLine } from "@/lib/lyrics";
 
 interface AudioStoreState {
@@ -23,6 +23,15 @@ interface AudioStoreState {
   isHookMode: boolean;
   hookDuration: number; // in seconds (default: 25)
   globalSearchQuery: string;
+
+  // Playlists
+  playlists: Playlist[];
+  activePlaylistId: string;
+
+  // Autoplay Recommendations
+  autoplayRecommendation: Track | null;
+  autoplayCountdown: number | null;
+  isAutoplayDismissed: boolean;
 
   // Actions
   playTrack: (track: Track) => void;
@@ -49,29 +58,51 @@ interface AudioStoreState {
   setAmbientData: (rgb: string, glow: string) => void;
   setLyrics: (lyrics: SyncedLyricLine[]) => void;
   setGlobalSearchQuery: (query: string) => void;
+
+  // Playlist Actions
+  selectPlaylist: (playlistId: string) => void;
+  playPlaylist: (playlistId: string) => void;
+
+  // Autoplay Actions
+  setAutoplayRecommendation: (track: Track | null) => void;
+  setAutoplayCountdown: (countdown: number | null) => void;
+  dismissAutoplay: () => void;
+  acceptAutoplay: () => void;
 }
+
+const defaultPlaylist = YOUTUBE_PLAYLISTS[0];
+const defaultTrack = defaultPlaylist.tracks[0];
 
 export const useAudioStore = create<AudioStoreState>()(
   persist(
     (set, get) => ({
-      currentTrack: INITIAL_TRACKS[0],
-      queue: INITIAL_TRACKS,
+      currentTrack: defaultTrack,
+      queue: defaultPlaylist.tracks,
       queueIndex: 0,
-      playbackStatus: "idle",
+      playbackStatus: "idle", // Never start playing automatically
       currentTime: 0,
-      duration: INITIAL_TRACKS[0]?.duration || 244,
+      duration: defaultTrack.duration || 327,
       volume: 80,
       isMuted: false,
       isShuffle: false,
       repeatMode: "all",
       activeView: "library",
-      ambientRgb: "30, 41, 59",
-      ambientGlow: "rgba(30, 41, 59, 0.25)",
-      lyrics: INITIAL_TRACKS[0]?.syncedLyrics || [],
+      ambientRgb: "24, 24, 27",
+      ambientGlow: "rgba(24, 24, 27, 0.25)",
+      lyrics: defaultTrack.syncedLyrics || [],
       seekTarget: null,
       isHookMode: false,
       hookDuration: 25,
       globalSearchQuery: "",
+
+      // Playlists
+      playlists: YOUTUBE_PLAYLISTS,
+      activePlaylistId: defaultPlaylist.id,
+
+      // Autoplay Recommendations
+      autoplayRecommendation: null,
+      autoplayCountdown: null,
+      isAutoplayDismissed: false,
 
       playTrack: (track) => {
         const { queue } = get();
@@ -83,7 +114,10 @@ export const useAudioStore = create<AudioStoreState>()(
             playbackStatus: "playing",
             currentTime: 0,
             duration: track.duration,
-            lyrics: track.syncedLyrics || []
+            lyrics: track.syncedLyrics || [],
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
           });
         } else {
           set({
@@ -93,7 +127,10 @@ export const useAudioStore = create<AudioStoreState>()(
             playbackStatus: "playing",
             currentTime: 0,
             duration: track.duration,
-            lyrics: track.syncedLyrics || []
+            lyrics: track.syncedLyrics || [],
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
           });
         }
       },
@@ -146,7 +183,14 @@ export const useAudioStore = create<AudioStoreState>()(
         if (queue.length === 0) return;
 
         if (repeatMode === "one") {
-          set({ currentTime: 0, seekTarget: 0, playbackStatus: "playing" });
+          set({
+            currentTime: 0,
+            seekTarget: 0,
+            playbackStatus: "playing",
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
+          });
           return;
         }
 
@@ -157,7 +201,11 @@ export const useAudioStore = create<AudioStoreState>()(
           if (repeatMode === "all") {
             nextIdx = 0;
           } else {
-            set({ playbackStatus: "ended" });
+            set({
+              playbackStatus: "ended",
+              autoplayRecommendation: null,
+              autoplayCountdown: null
+            });
             return;
           }
         }
@@ -170,7 +218,10 @@ export const useAudioStore = create<AudioStoreState>()(
             playbackStatus: "playing",
             currentTime: 0,
             duration: nextT.duration,
-            lyrics: nextT.syncedLyrics || []
+            lyrics: nextT.syncedLyrics || [],
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
           });
         }
       },
@@ -201,7 +252,10 @@ export const useAudioStore = create<AudioStoreState>()(
             currentTime: dropTime,
             seekTarget: dropTime,
             duration: nextT.duration,
-            lyrics: nextT.syncedLyrics || []
+            lyrics: nextT.syncedLyrics || [],
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
           });
         }
       },
@@ -224,7 +278,10 @@ export const useAudioStore = create<AudioStoreState>()(
             playbackStatus: "playing",
             currentTime: 0,
             duration: prevT.duration,
-            lyrics: prevT.syncedLyrics || []
+            lyrics: prevT.syncedLyrics || [],
+            autoplayRecommendation: null,
+            autoplayCountdown: null,
+            isAutoplayDismissed: false
           });
         }
       },
@@ -288,7 +345,51 @@ export const useAudioStore = create<AudioStoreState>()(
 
       setLyrics: (lyrics) => set({ lyrics }),
 
-      setGlobalSearchQuery: (globalSearchQuery) => set({ globalSearchQuery })
+      setGlobalSearchQuery: (globalSearchQuery) => set({ globalSearchQuery }),
+
+      // Playlist Actions
+      selectPlaylist: (playlistId) => {
+        set({ activePlaylistId: playlistId });
+      },
+
+      playPlaylist: (playlistId) => {
+        const { playlists } = get();
+        const target = playlists.find((p) => p.id === playlistId);
+        if (!target || target.tracks.length === 0) return;
+
+        const firstTrack = target.tracks[0];
+        set({
+          activePlaylistId: playlistId,
+          queue: target.tracks,
+          queueIndex: 0,
+          currentTrack: firstTrack,
+          playbackStatus: "playing",
+          currentTime: 0,
+          duration: firstTrack.duration,
+          lyrics: firstTrack.syncedLyrics || [],
+          autoplayRecommendation: null,
+          autoplayCountdown: null,
+          isAutoplayDismissed: false
+        });
+      },
+
+      // Autoplay Actions
+      setAutoplayRecommendation: (autoplayRecommendation) => set({ autoplayRecommendation }),
+
+      setAutoplayCountdown: (autoplayCountdown) => set({ autoplayCountdown }),
+
+      dismissAutoplay: () => set({
+        isAutoplayDismissed: true,
+        autoplayRecommendation: null,
+        autoplayCountdown: null
+      }),
+
+      acceptAutoplay: () => {
+        const { autoplayRecommendation, playTrack } = get();
+        if (autoplayRecommendation) {
+          playTrack(autoplayRecommendation);
+        }
+      }
     }),
     {
       name: "dropbeat-audio-store",
@@ -304,3 +405,7 @@ export const useAudioStore = create<AudioStoreState>()(
     }
   )
 );
+
+if (typeof window !== "undefined") {
+  (window as unknown as { __DROPBEAT_STORE__: typeof useAudioStore }).__DROPBEAT_STORE__ = useAudioStore;
+}

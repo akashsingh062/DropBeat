@@ -20,6 +20,8 @@ export function TrackGrid({ tracks }: TrackGridProps) {
   const addToQueue = useAudioStore((s) => s.addToQueue);
   const globalSearchQuery = useAudioStore((s) => s.globalSearchQuery);
   const setGlobalSearchQuery = useAudioStore((s) => s.setGlobalSearchQuery);
+  const activePlaylistId = useAudioStore((s) => s.activePlaylistId);
+  const playlists = useAudioStore((s) => s.playlists);
 
   const [searchQuery, setSearchQuery] = useState(globalSearchQuery || "");
   const [debouncedQuery, setDebouncedQuery] = useState(globalSearchQuery || "");
@@ -88,15 +90,26 @@ export function TrackGrid({ tracks }: TrackGridProps) {
     }, 1200);
   };
 
+  const activePlaylist = playlists.find((p) => p.id === activePlaylistId) || playlists[0];
   const genres = ["all", ...Array.from(new Set(tracks.map((t) => t.genre)))];
 
-  const filteredCuratedTracks = tracks.filter((t) => {
+  // If a genre is selected, filter by genre; otherwise display current active playlist tracks
+  const displayedTracks = tracks.filter((t) => {
     const matchesSearch =
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.album.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGenre = selectedGenre === "all" || t.genre === selectedGenre;
-    return matchesSearch && matchesGenre;
+
+    if (selectedGenre !== "all") {
+      return matchesSearch && t.genre === selectedGenre;
+    }
+
+    // Default to active playlist tracks when viewing "all"
+    if (!searchQuery && activePlaylist) {
+      return activePlaylist.tracks.some((pt) => pt.id === t.id);
+    }
+
+    return matchesSearch;
   });
 
   const formatDuration = (secs: number) => {
@@ -152,7 +165,7 @@ export function TrackGrid({ tracks }: TrackGridProps) {
                   : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900/60"
               }`}
             >
-              {g === "all" ? "All genres" : g}
+              {g === "all" ? `Active: ${activePlaylist?.title || "All"}` : g}
             </button>
           ))}
         </div>
@@ -205,7 +218,7 @@ export function TrackGrid({ tracks }: TrackGridProps) {
                         className="object-cover"
                       />
 
-                      {/* Play trigger overlay - accessible on mobile & desktop */}
+                      {/* Play trigger overlay */}
                       <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
                         <button
                           type="button"
@@ -239,7 +252,6 @@ export function TrackGrid({ tracks }: TrackGridProps) {
 
                   {/* 3 Explicit Action Buttons */}
                   <div className="mt-3 pt-3 border-t border-neutral-800/80 flex items-center justify-between gap-1.5">
-                    {/* Play Now Button */}
                     <button
                       type="button"
                       onClick={() => playTrack(ytTrack)}
@@ -250,7 +262,6 @@ export function TrackGrid({ tracks }: TrackGridProps) {
                       <span>Play</span>
                     </button>
 
-                    {/* Play Drop Button */}
                     <button
                       type="button"
                       onClick={() => playTrackAtDrop(ytTrack)}
@@ -261,7 +272,6 @@ export function TrackGrid({ tracks }: TrackGridProps) {
                       <span>Drop</span>
                     </button>
 
-                    {/* Add to Queue Button */}
                     <button
                       type="button"
                       onClick={() => handleQueueClick(ytTrack)}
@@ -298,19 +308,28 @@ export function TrackGrid({ tracks }: TrackGridProps) {
         </div>
       )}
 
-      {/* Curated Tracks Section */}
+      {/* Playlist / Curated Master Recordings */}
       <div className={`space-y-4 ${debouncedQuery ? "pt-6 border-t border-neutral-800" : ""}`}>
         <div className="flex items-center justify-between pb-1 border-b border-neutral-800/80">
-          <span className="text-sm font-semibold text-neutral-300">
-            {debouncedQuery ? "Curated Catalog Matches" : "Curated Master Recordings"}
-          </span>
-          <span className="text-xs text-neutral-500 font-sans">
-            {filteredCuratedTracks.length} track{filteredCuratedTracks.length === 1 ? "" : "s"}
+          <div>
+            <span className="text-sm font-semibold text-neutral-100">
+              {debouncedQuery
+                ? "Curated Catalog Matches"
+                : `${activePlaylist?.title || "Curated"} Master Recordings`}
+            </span>
+            {!debouncedQuery && (
+              <p className="text-xs text-neutral-400 mt-0.5">
+                {activePlaylist?.subtitle}
+              </p>
+            )}
+          </div>
+          <span className="text-xs text-neutral-400 font-sans">
+            {displayedTracks.length} track{displayedTracks.length === 1 ? "" : "s"}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr))]">
-          {filteredCuratedTracks.map((track) => {
+          {displayedTracks.map((track) => {
             const isCurrent = currentTrack?.id === track.id;
             const isPlaying = isCurrent && playbackStatus === "playing";
             const isJustQueued = queuedTrackId === track.id;
@@ -325,7 +344,7 @@ export function TrackGrid({ tracks }: TrackGridProps) {
                 }`}
               >
                 <div>
-                  <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-neutral-950 mb-3 border border-neutral-800/60">
+                  <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-neutral-950 mb-3 border border-neutral-800/60">
                     <Image
                       src={track.thumbnailUrl || track.coverUrl}
                       alt={track.title}
@@ -415,10 +434,10 @@ export function TrackGrid({ tracks }: TrackGridProps) {
           })}
         </div>
 
-        {filteredCuratedTracks.length === 0 && (
+        {displayedTracks.length === 0 && (
           <div className="py-12 text-center text-neutral-500">
             <Disc className="w-8 h-8 mx-auto mb-2 opacity-40 animate-pulse" />
-            <p className="text-sm">No curated catalog tracks match &ldquo;{searchQuery}&rdquo;</p>
+            <p className="text-sm">No tracks found matching &ldquo;{searchQuery}&rdquo;</p>
           </div>
         )}
       </div>

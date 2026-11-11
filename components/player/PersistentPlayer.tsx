@@ -5,6 +5,7 @@ import YouTube, { YouTubePlayer, YouTubeEvent } from "react-youtube";
 import { useAudioStore } from "@/lib/store";
 import { extractDominantColor, applyAmbientTheme } from "@/lib/ambient";
 import { fetchLyricsFromLrclib } from "@/lib/lyrics";
+import { Track } from "@/types/music";
 
 export function PersistentPlayer() {
   const currentTrack = useAudioStore((s) => s.currentTrack);
@@ -14,6 +15,10 @@ export function PersistentPlayer() {
   const seekTarget = useAudioStore((s) => s.seekTarget);
   const isHookMode = useAudioStore((s) => s.isHookMode);
   const hookDuration = useAudioStore((s) => s.hookDuration);
+  const queue = useAudioStore((s) => s.queue);
+  const queueIndex = useAudioStore((s) => s.queueIndex);
+  const autoplayRecommendation = useAudioStore((s) => s.autoplayRecommendation);
+  const isAutoplayDismissed = useAudioStore((s) => s.isAutoplayDismissed);
 
   const setPlaybackStatus = useAudioStore((s) => s.setPlaybackStatus);
   const setCurrentTime = useAudioStore((s) => s.setCurrentTime);
@@ -23,16 +28,24 @@ export function PersistentPlayer() {
   const clearSeekTarget = useAudioStore((s) => s.clearSeekTarget);
   const setAmbientData = useAudioStore((s) => s.setAmbientData);
   const setLyrics = useAudioStore((s) => s.setLyrics);
+  const setAutoplayRecommendation = useAudioStore((s) => s.setAutoplayRecommendation);
+  const setAutoplayCountdown = useAudioStore((s) => s.setAutoplayCountdown);
+  const playTrack = useAudioStore((s) => s.playTrack);
 
   const playerRef = useRef<YouTubePlayer | null>(null);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasTriggeredHookSkip = useRef(false);
+  const isFetchingRecommendation = useRef(false);
+  const hasTriggeredAutoplayEnd = useRef(false);
 
-  // Reset hook skip guard when current track changes
+  // Reset guards whenever current track changes
   useEffect(() => {
     hasTriggeredHookSkip.current = false;
-  }, [currentTrack]);
+    isFetchingRecommendation.current = false;
+    hasTriggeredAutoplayEnd.current = false;
+    setAutoplayCountdown(null);
+  }, [currentTrack, setAutoplayCountdown]);
 
   // Sync ambient color and lyrics whenever track changes
   useEffect(() => {
@@ -72,11 +85,11 @@ export function PersistentPlayer() {
     try {
       if (playbackStatus === "playing") {
         player.playVideo();
-      } else if (playbackStatus === "paused") {
+      } else if (playbackStatus === "paused" || playbackStatus === "idle") {
         player.pauseVideo();
       }
     } catch {
-      // player might be transitioning
+      // player transitioning
     }
   }, [playbackStatus, isPlayerReady, currentTrack]);
 
@@ -110,7 +123,7 @@ export function PersistentPlayer() {
     }
   }, [seekTarget, isPlayerReady, clearSeekTarget]);
 
-  // Time tracking interval
+  // Time tracking and Autoplay recommendation monitoring
   const startTimeTracking = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -130,6 +143,54 @@ export function PersistentPlayer() {
             if (time >= dropPoint + hookDuration && !hasTriggeredHookSkip.current) {
               hasTriggeredHookSkip.current = true;
               nextTrackDrop();
+              return;
+            }
+          }
+
+          // Autoplay recommendation check when song is about to end (<= 15 seconds remaining)
+          if (dur > 20 && !isAutoplayDismissed) {
+            const remaining = dur - time;
+
+            if (remaining <= 15 && remaining > 0) {
+              setAutoplayCountdown(Math.ceil(remaining));
+
+              // Resolve recommendation if not already set
+              if (!autoplayRecommendation && !isFetchingRecommendation.current) {
+                // Check if queue has a next track
+                if (queueIndex + 1 < queue.length) {
+                  setAutoplayRecommendation(queue[queueIndex + 1]);
+                } else if (currentTrack) {
+                  // Fetch dynamic YouTube recommendation
+                  isFetchingRecommendation.current = true;
+                  fetch(
+                    `/api/recommendations?artist=${encodeURIComponent(currentTrack.artist)}&title=${encodeURIComponent(currentTrack.title)}&genre=${encodeURIComponent(currentTrack.genre)}&excludeId=${currentTrack.youtubeId}`
+                  )
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (data.recommendations && data.recommendations.length > 0) {
+                        setAutoplayRecommendation(data.recommendations[0]);
+                      }
+                    })
+                    .catch(() => {
+                      // fallback to looping to queue[0]
+                      if (queue.length > 0) {
+                        setAutoplayRecommendation(queue[0]);
+                      }
+                    });
+                }
+              }
+
+              // Auto-advance if remaining time hits end
+              if (remaining <= 1 && !hasTriggeredAutoplayEnd.current) {
+                hasTriggeredAutoplayEnd.current = true;
+                if (autoplayRecommendation) {
+                  playTrack(autoplayRecommendation);
+                } else {
+                  nextTrack();
+                }
+              }
+            } else if (remaining > 15) {
+              setAutoplayCountdown(null);
             }
           }
         }
@@ -140,7 +201,22 @@ export function PersistentPlayer() {
         // player might not be ready
       }
     }, 250);
-  }, [setCurrentTime, setDuration, isHookMode, currentTrack, hookDuration, nextTrackDrop]);
+  }, [
+    setCurrentTime,
+    setDuration,
+    isHookMode,
+    currentTrack,
+    hookDuration,
+    nextTrackDrop,
+    isAutoplayDismissed,
+    queue,
+    queueIndex,
+    autoplayRecommendation,
+    setAutoplayCountdown,
+    setAutoplayRecommendation,
+    nextTrack,
+    playTrack
+  ]);
 
   const stopTimeTracking = useCallback(() => {
     if (intervalRef.current) {
@@ -164,8 +240,12 @@ export function PersistentPlayer() {
     try {
       event.target.setVolume(volume);
       if (isMuted) event.target.mute();
+
+      // STRICT CHECK: DO NOT PLAY INITIALLY UNLESS USER EXPLICITLY INITIATES PLAY
       if (playbackStatus === "playing") {
         event.target.playVideo();
+      } else {
+        event.target.pauseVideo();
       }
     } catch {
       // ignore
@@ -183,7 +263,10 @@ export function PersistentPlayer() {
     } else if (state === 3) {
       setPlaybackStatus("buffering");
     } else if (state === 0) {
-      if (isHookMode) {
+      // If autoplay recommendation exists and wasn't dismissed, automatically play it
+      if (!isAutoplayDismissed && autoplayRecommendation) {
+        playTrack(autoplayRecommendation);
+      } else if (isHookMode) {
         nextTrackDrop();
       } else {
         nextTrack();
@@ -212,7 +295,7 @@ export function PersistentPlayer() {
           height: "1",
           width: "1",
           playerVars: {
-            autoplay: 1,
+            autoplay: 0, // Explicitly 0: never autoplay on mount
             controls: 0,
             disablekb: 1,
             fs: 0,
