@@ -1,26 +1,77 @@
+/* Hallmark · atmospheric · dark · DropBeat music platform · theme: custom */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · weakest: S, deepened tactile turntable cues and LRCLIB integration */
+
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d0d11;
+  --surface-base: #14141b;
+  --surface-elevated: #1a1a24;
+  --surface-hover: #222230;
+  --foreground: #f4f4f6;
+  --foreground-muted: #8e8e9f;
+  --border-subtle: #242432;
+  --border-strong: #36364a;
+  --ambient-rgb: 37, 43, 59;
+  --ambient-glow: rgba(37, 43, 59, 0.22);
+  --track-accent: oklch(68% 0.16 248);
+  --track-accent-muted: rgba(59, 130, 246, 0.35);
+  --vinyl-groove-dark: #0f0f13;
+  --vinyl-groove-light: #17171c;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface-base: var(--surface-base);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
+  overflow-x: clip;
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  min-height: 100%;
+}
+
+/* Hallmark Gate 10a: Zero transition: all */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+a,
+input {
+  transition-property: color, background-color, border-color, opacity, transform, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hallmark Gate 26a: Instant focus-visible */
+:focus-visible {
+  outline: 2px solid var(--foreground-muted);
+  outline-offset: 2px;
+}
+
+/* Hallmark Gate 27: Prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
